@@ -1,0 +1,76 @@
+import org.gradle.api.internal.artifacts.publish.ArchivePublishArtifact
+
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+
+dependencies {
+    implementation 'io.netty:netty-all:4.1.100.Final'
+}
+
+shadowJar {
+    relocate 'io.netty', 'org.example.shaded.netty'
+}
+
+shadowJar.group = ""
+// Configure a shaded jar to replace the default jar
+shadowJar.classifier = null // Configure shadow jar to have the default classifier.
+jar.finalizedBy(shadowJar)  // Generate the shaded jar anytime the jar task is run.
+jar.classifier = "unshaded" // Add an unshaded classifier to the default jar.
+
+// Remove the unshaded jar from the published artifacts.
+configurations.archives.artifacts.removeAll {
+    it instanceof ArchivePublishArtifact && it.archiveTask == jar
+}
+
+task sourcesJar(type: Jar, dependsOn: classes, group: "Build") {
+    description = "Assembles a jar archive containing the main source."
+    from sourceSets.main.allSource
+    archiveClassifier = "sources"
+    archiveExtension = "jar"
+}
+
+artifacts {
+    archives sourcesJar
+    archives shadowJar
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifact(sourcesJar) {
+                classifier = "sources"
+            }
+
+            pom {
+                url = "$url"
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                        distribution = "repo"
+                    }
+                }
+            }
+
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            name = 'local'
+            url = uri("${buildDir}/repo")
+        }
+    }
+}
