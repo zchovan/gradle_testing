@@ -21,6 +21,7 @@ dependencies {
 
 shadowJar {
     relocate 'io.netty', 'org.example.shaded.netty'
+    minimize()
 }
 
 shadowJar.group = ""
